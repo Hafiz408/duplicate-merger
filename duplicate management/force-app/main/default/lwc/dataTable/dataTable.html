@@ -1,0 +1,143 @@
+<template>
+    <div class="slds-col column-container">
+        <div class="slds-box slds-theme_default">
+            <div class="slds-text-heading_medium">{header}</div>
+            <!-- Utility Bar -->
+            <div class="search-filter-container slds-grid">
+                <!-- Search Bar -->
+                <div class="search-input-wrappe  slds-col">
+                    <lightning-input
+                        type="search"
+                        placeholder="Search Accounts..."
+                        value={searchTerm}
+                        onchange={handleSearch}
+                    ></lightning-input>
+                </div>
+                <div class="filter-button-wrapper slds-col">
+                    <!-- Filter Button -->
+                    <div class="filter-button-wrapper slds-col">
+                        <button class="slds-button slds-button_icon slds-button_icon-border-filled" title="Filter" onclick={handleFilterClick}>
+                            <lightning-icon icon-name="utility:filterList" size="x-small" alternative-text="Filter"></lightning-icon>
+                            <span class="slds-assistive-text">Filter</span>
+                        </button>
+                    </div>
+                    <!-- Column Filter Button -->
+                    <div class="filter-button-wrapper slds-col">
+                        <button class="slds-button slds-button_icon slds-button_icon-border-filled" title="Columns" onclick={handleColumnFilterClick}>
+                            <lightning-icon icon-name="utility:columns" size="x-small" alternative-text="Columns"></lightning-icon>
+                            <span class="slds-assistive-text">Columns</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Modal -->
+            <template if:true={isFilterOpen}>
+                <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1">
+                    <div class="slds-modal__container">
+                        <header class="slds-modal__header">
+                            <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Filter Accounts</h2>
+                        </header>
+                        <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                            <template for:each={filterCriteria} for:item="criteria" for:index="index">
+                                <div key={criteria.id} class="slds-grid slds-gutters slds-m-bottom_small">
+                                    <div class="slds-col slds-size_1-of-3">
+                                        <lightning-combobox
+                                            label="Field"
+                                            value={criteria.field}
+                                            options={fieldOptions}
+                                            onchange={handleFieldChange}
+                                            data-index={index}
+                                        ></lightning-combobox>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-3">
+                                        <lightning-combobox
+                                            label="Operator"
+                                            value={criteria.operator}
+                                            options={operatorOptions}
+                                            onchange={handleOperatorChange}
+                                            data-index={index}
+                                        ></lightning-combobox>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-3">
+                                        <lightning-input
+                                            label="Value"
+                                            value={criteria.value}
+                                            onchange={handleValueChange}
+                                            data-index={index}
+                                        ></lightning-input>
+                                    </div>
+                                </div>
+                            </template>
+                            <div class="slds-m-top_medium">
+                                <lightning-button label="Add Filter" onclick={addFilterCriteria} disabled={isAddDisabled} class="slds-m-right_small"></lightning-button>
+                                <lightning-button label="Remove Filter" onclick={removeFilterCriteria} disabled={isRemoveDisabled}></lightning-button>
+                            </div>
+                        </div>
+                        <footer class="slds-modal__footer">
+                            <button class="slds-button slds-button_neutral" onclick={closeFilterModal}>Cancel</button>
+                            <button class="slds-button slds-button_brand" onclick={applyFilter}>Apply Filter</button>
+                        </footer>
+                    </div>
+                </section>
+                <div class="slds-backdrop slds-backdrop_open"></div>
+            </template>
+
+            <!-- Column Filter Modal -->
+            <template if:true={isColumnFilterOpen}>
+                <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1">
+                    <div class="slds-modal__container">
+                        <header class="slds-modal__header">
+                            <h2 id="modal-heading-02" class="slds-text-heading_medium slds-hyphenate">Filter Table Columns</h2>
+                        </header>
+                        <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-2">
+                            <template for:each={columnSelectionData} for:item="column">
+                                <div key={column.fieldName} class="slds-col">
+                                    <lightning-input
+                                        data-id="columnSelect"
+                                        type="checkbox"
+                                        label={column.label}
+                                        value={column.fieldName}
+                                        checked={column.selected}>
+                                    </lightning-input>
+                                </div>
+                            </template>
+                        </div>
+                        <footer class="slds-modal__footer">
+                            <button class="slds-button slds-button_neutral" onclick={closeColumnFilterModal}>Cancel</button>
+                            <button class="slds-button slds-button_brand" onclick={applyColumnFilter}>Apply Filter</button>
+                        </footer>
+                    </div>
+                </section>
+                <div class="slds-backdrop slds-backdrop_open"></div>
+            </template>
+
+            <!-- Result Data Table -->
+            <div class="slds-m-top_medium slds-scrollable_y slds-scrollable_x" style="height: 500px; overflow-x: auto;">
+                <lightning-datatable
+                    key-field="id"
+                    data={filteredAccounts}
+                    selected-rows={markedRecords}
+                    columns={columnsToDisplay}
+                    onrowselection={handleSelection}
+                    onsort={handleSort}
+                    sorted-by={sortBy}
+                    sorted-direction={sortDirection}
+                    max-row-selection={maxRowSelection}
+                    hide-checkbox-column={hideCheckboxColumn}
+                    column-widths-mode="auto"
+                    min-column-width="200">
+                </lightning-datatable>
+            </div>
+
+            <!-- Pagination  -->
+            <div class="slds-m-top_medium slds-text-align_center">
+                <button class="slds-button slds-button_neutral" onclick={handlePrevious} disabled={isFirstPage}>Previous</button>
+                <span class="slds-p-horizontal_x-small">
+                    Page {currentPage} of {totalPages}
+                </span>
+                <button class="slds-button slds-button_neutral" onclick={handleNext} disabled={isLastPage}>Next</button>
+            </div>
+        </div>
+    </div>
+</template>

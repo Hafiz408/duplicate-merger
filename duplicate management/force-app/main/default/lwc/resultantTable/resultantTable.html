@@ -1,0 +1,46 @@
+<template>
+    <div class="slds-table_bordered slds-table_fixed-layout slds-box">
+        <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+            <thead>
+                <tr class="slds-line-height_reset">
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Row Number">Row</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Master Record ID">Master ID</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Master Record Name">Master Name</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Duplicate Record ID">Duplicate ID</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Duplicate Record Name">Duplicate Name</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <template for:each={comparisonData} for:item="row">
+                    <tr key={row.duplicateId} class="slds-hint-parent">
+                        <td data-label="Row Number">
+                            <div class="slds-truncate">{row.rowNumber}</div>
+                        </td>
+                        <td data-label="Master ID">
+                            <div class="slds-truncate">{row.masterId}</div>
+                        </td>
+                        <td data-label="Master Name">
+                            <div class="slds-truncate">{row.masterName}</div>
+                        </td>
+                        <td data-label="Duplicate ID">
+                            <div class="slds-truncate">{row.duplicateId}</div>
+                        </td>
+                        <td data-label="Duplicate Name">
+                            <div class="slds-truncate">{row.duplicateName}</div>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</template>
