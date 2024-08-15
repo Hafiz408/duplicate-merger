@@ -6,32 +6,37 @@ const PAGE_SIZE = 20;
 
 export default class DataTable extends LightningElement {
     @api header;
-    @api selectedRecords = [];
     @api hideCheckboxColumn = false;
+    @api selectedColumns = [];
+    @api disableUtility = false;
 
     @track searchTerm = '';
     @track filteredAccounts = [];
     @track filterCriteria = [{ id: 1, field: '', operator: '', value: '' }];
     @track isFilterOpen = false;
+    @track internalRecords = [];
+
     @track columns = [];
-    @track selectedColumns = ['name', 'createddate'];
     @track columnsToDisplay = [];
     @track columnSelectionData = [];
     @track isColumnFilterOpen = false;
     @track allSelectedRecords = new Set(); 
     @track error;
 
-
     @track sortBy;
     @track sortDirection = 'asc';
-
-    
 
     currentPage = 1;
     totalRecords = 0;
     totalPages = 0;
     allRecords = [];
     allAccounts = [];
+
+    rowActions = [
+        { label: 'Compare Record', name: 'compare' },
+        { label: 'Remove Record', name: 'delete' },
+        { label: 'Show Details', name: 'show_details' }
+    ];
 
     operatorOptions = [
         { label: 'Equals', value: '=' },
@@ -41,49 +46,52 @@ export default class DataTable extends LightningElement {
         { label: 'Starts With', value: 'LIKE%' },
         { label: 'Ends With', value: '%LIKE' }
     ];
+
+    @api
+    set selectedRecords(value) {
+        this.internalRecords = value;
+        this.updateFilteredAccounts();
+    }
+
+    get selectedRecords() {
+        return this.internalRecords;
+    }
     
+    // logic if selected records is updated
+    updateFilteredAccounts() {
+        if (this.hideCheckboxColumn && this.selectedRecords) {
+            this.allAccounts = [...this.selectedRecords];
+            this.allSelectedRecords = new Set(this.selectedRecords.map(record => record.id));
+            this.applySearchFilterSortAndPagination();
+        }
+    }
+
     async connectedCallback() {
         try {
             await this.loadAccountFields();
             await this.initializeData();
+            if (this.selectedColumns.length == 0){
+                this.selectedColumns = ['nameurl', 'createddate'];
+            }
             this.prepareColumnSelectionData();
             this.setColumnsToDisplay();
             this.allSelectedRecords = new Set(this.selectedRecords.map(record => record.id));
+
+            // To send selected columns to parent
+            const selectEvent = new CustomEvent('columnselection', {
+                detail: {
+                    name: this.header,
+                    selectedColumns: this.selectedColumns
+                }
+            });
+            this.dispatchEvent(selectEvent);
         } catch (error) {
             this.error = error;
             console.error('Error in initialization:', error);
         }
     }
 
-    async initializeData() {
-        if (this.hideCheckboxColumn && this.selectedRecords) {
-            this.allRecords = [...this.selectedRecords];
-            this.allAccounts = [...this.selectedRecords];
-            this.applySearchAndPagination();
-        } else {
-            await this.loadAllAccounts();
-        }
-    }
-
-    async loadAllAccounts() {
-        try {
-            const result = await getAllAccounts();
-            this.allAccounts = result.map(account => {
-                const lowercaseAccount = {};
-                Object.keys(account).forEach(key => {
-                    lowercaseAccount[key.toLowerCase()] = account[key];
-                });
-                lowercaseAccount.nameurl = `/lightning/r/Account/${account.Id}/view`;
-                return lowercaseAccount;
-            });
-            console.log('Account records loaded:', this.allAccounts);
-            this.applySearchAndFilter();
-        } catch (error) {
-            console.error('Error loading accounts:', error);
-            throw error;
-        }
-    }
-
+    // to load all account fields and process columns
     async loadAccountFields() {
         try {
             const result = await getAccountFields();
@@ -105,9 +113,66 @@ export default class DataTable extends LightningElement {
                     sortable: true
                 };
             });
+
+            // Add row actions to columns
+            if (this.hideCheckboxColumn && this.header != "Master Record"){
+                // add row actions
+                this.columns.push({
+                    type: 'action',
+                    typeAttributes: { rowActions: this.rowActions },
+                    fieldName: 'action'
+                });
+                
+                // add buttons
+                this.columns.push(
+                    {
+                        type: 'button', 
+                        initialWidth: 120,
+                        typeAttributes: {
+                            label: 'Remove',
+                            name: 'delete',
+                            disabled: false,
+                            iconPosition: 'left',
+                            iconName: 'utility:delete',
+                            variant: 'destructive'
+                        },
+                        fieldName: 'deleteBtn'
+                    },
+                    {
+                        type: 'button', 
+                        initialWidth: 130,
+                        typeAttributes: {
+                            label: 'Compare',
+                            name: 'compare',
+                            disabled: false,
+                            iconPosition: 'left',
+                            iconName: 'utility:edit',
+                            variant: 'brand'
+                        },
+                        fieldName: 'compareBtn'
+                    }
+                );
+            }
+
+            // Custom sort order for specific columns
+            const customOrder = {
+                'action': 0,
+                'compareBtn': 1,
+                'deleteBtn': 2,
+                'id': 3,
+                'nameurl': 4
+            };
             
             // Sort the columns alphabetically by label
             this.columns.sort((a, b) => {
+                // to make specific column come 1st
+                const orderA = customOrder[a.fieldName] !== undefined ? customOrder[a.fieldName] : 5;
+                const orderB = customOrder[b.fieldName] !== undefined ? customOrder[b.fieldName] : 5;
+
+                if (orderA !== orderB) {
+                    return orderA - orderB;
+                }
+
                 const labelA = a.label.toLowerCase();
                 const labelB = b.label.toLowerCase();
                 if (labelA < labelB) return -1;
@@ -115,21 +180,64 @@ export default class DataTable extends LightningElement {
                 return 0;
             });
 
-            console.log('Account fields loaded:', this.columns);
+            // console.log('Account fields loaded:', this.columns);
         } catch (error) {
             console.error('Error loading account fields:', error);
             throw error;
         }
     }
-    //sorting
-    handleSort(event) {
-        const { fieldName: sortedBy, sortDirection } = event.detail;
-        this.sortBy = sortedBy;
-        this.sortDirection = sortDirection;
-        this.applySearchAndFilter();
+
+    // logic to initalize data
+    async initializeData() {
+        if (this.hideCheckboxColumn && this.selectedRecords) {
+            this.allAccounts = [...this.selectedRecords];
+            this.applySearchFilterSortAndPagination();
+        } else {
+            await this.loadAllAccounts();
+        }
     }
 
-    applySearchAndFilter() {
+    // to load all account records
+    async loadAllAccounts() {
+        try {
+            const result = await getAllAccounts();
+            this.allAccounts = result.map(account => {
+                const lowercaseAccount = {};
+                Object.keys(account).forEach(key => {
+                    lowercaseAccount[key.toLowerCase()] = account[key];
+                });
+                lowercaseAccount.nameurl = `/lightning/r/Account/${account.Id}/view`;
+                return lowercaseAccount;
+            });
+            // console.log('Account records loaded:', this.allAccounts);
+            this.applySearchFilterSortAndPagination();
+        } catch (error) {
+            console.error('Error loading accounts:', error);
+            throw error;
+        }
+    }
+
+    // Process columns data for Column Filter Modal
+    prepareColumnSelectionData() {
+        this.columnSelectionData = this.columns
+        .filter(column => column.type !== 'action' && column.type !== 'button')
+        .map(column => ({
+            ...column,
+            selected: this.selectedColumns.includes(column.fieldName)
+        }));
+    }
+
+    // Process columns data to display in table
+    setColumnsToDisplay() {
+        this.columnsToDisplay = this.columns.filter(column =>
+            this.selectedColumns.includes(column.fieldName) || column.type === 'action' || column.type === 'button'
+        ).map(column => ({
+            ...column,
+            sortable: true
+        }));
+    }
+
+    applySearchFilterSortAndPagination() {
         let filteredRecords = this.allAccounts;
 
         if (this.searchTerm) {
@@ -148,7 +256,6 @@ export default class DataTable extends LightningElement {
                     if (!criteria.field || !criteria.operator || !criteria.value) return true;
                     const fieldValue = record[criteria.field.toLowerCase() == "nameurl" ? "name" : criteria.field.toLowerCase()];
                     const criteriaValue = criteria.value.toLowerCase();
-                    console.log(criteria.field.toLowerCase(), fieldValue, record);
                     switch (criteria.operator) {
                         case '=': return fieldValue && fieldValue.toLowerCase() == criteriaValue;
                         case '!=': return fieldValue && fieldValue.toLowerCase() != criteriaValue;
@@ -166,16 +273,14 @@ export default class DataTable extends LightningElement {
             filteredRecords = this.sortData(filteredRecords, this.sortBy, this.sortDirection);
         }
 
-
         this.totalRecords = filteredRecords.length;
         this.totalPages = Math.ceil(this.totalRecords / PAGE_SIZE);
         this.sortedAndFilteredRecords = filteredRecords;//sorting
-        const start = (this.currentPage - 1) * PAGE_SIZE;
-        const end = this.currentPage * PAGE_SIZE;
-        this.filteredAccounts = filteredRecords.slice(start, end);
+        
         this.updatePageData();//sorting
     }
 
+    // to handle page change logic
     updatePageData() {
         const start = (this.currentPage - 1) * PAGE_SIZE;
         const end = this.currentPage * PAGE_SIZE;
@@ -188,6 +293,100 @@ export default class DataTable extends LightningElement {
                 .map(account => account.id);
             this.template.querySelector('lightning-datatable').selectedRows = selectedRows;
         }
+    }
+
+    handleSelection(event) {
+        const selectedRows = event.detail.selectedRows;
+        
+        // Update allSelectedRecords
+        if (this.header === "Master Record") {
+            this.allSelectedRecords = new Set([selectedRows[0].id]);
+        } else {
+            selectedRows.forEach(row => this.allSelectedRecords.add(row.id));
+        }
+        
+        // Handle unselect
+        this.filteredAccounts.forEach(account => {
+            if (!selectedRows.some(row => row.id === account.id)) {
+                this.allSelectedRecords.delete(account.id);
+            }
+        });
+    
+        this.selectedRecords = Array.from(this.allSelectedRecords)
+            .map(id => this.allAccounts.find(account => account.id === id))
+            .filter(Boolean);
+    
+        // console.log('Selected', this.header, ':', this.selectedRecords);
+    
+        const selectEvent = new CustomEvent('recordselection', {
+            detail: {
+                name: this.header,
+                selectedRecords: this.selectedRecords
+            }
+        });
+        this.dispatchEvent(selectEvent);
+    }
+
+    //sorting
+    handleSort(event) {
+        const { fieldName: sortedBy, sortDirection } = event.detail;
+        this.sortBy = sortedBy;
+        this.sortDirection = sortDirection;
+        this.applySearchFilterSortAndPagination();
+    }
+
+    //search
+    handleSearch(event) {
+        this.searchTerm = event.target.value;
+        this.currentPage = 1;
+        this.applySearchFilterSortAndPagination();
+    }
+
+    handleRowAction(event) {
+        const actionName = event.detail.action.name;
+        const row = event.detail.row;
+        switch (actionName) {
+            case 'delete':
+                this.deleteRow(row);
+                break;
+            case 'compare':
+                this.compareRow(row);
+                break;
+            case 'show_details':
+                this.navigateToRecordPage(row.id);
+                break;
+            default:
+        }
+    }
+
+    // delete record row action logic
+    deleteRow(row) {
+        // to notify parent 
+        const selectEvent = new CustomEvent('removerecord', {
+            detail: {
+                name: this.header,
+                removeRecord: row
+            }
+        });
+        this.dispatchEvent(selectEvent);
+    }
+
+    // compare modal row action logic
+    compareRow(row){
+        console.log('compare modal');
+        const selectEvent = new CustomEvent('opencomparemodal', {
+            detail: {
+                duplicateRecord : row,
+                allColumns : this.columns.filter(column => column.type !== 'action' && column.type !== 'button')
+            }
+        });
+        this.dispatchEvent(selectEvent);
+    }
+
+    // show details row action logic
+    navigateToRecordPage(recordId) {
+        const url = `/lightning/r/Account/${recordId}/view`;
+        window.open(url, '_blank');
     }
 
     //for sorting column data
@@ -206,17 +405,17 @@ export default class DataTable extends LightningElement {
             if (typeof aValue === 'string') aValue = aValue.toLowerCase();
             if (typeof bValue === 'string') bValue = bValue.toLowerCase();
             if (aValue === bValue) return 0;
-        if (aValue == null) return direction === 'asc' ? -1 : 1;
-        if (bValue == null) return direction === 'asc' ? 1 : -1;
+            if (aValue == null) return direction === 'asc' ? -1 : 1;
+            if (bValue == null) return direction === 'asc' ? 1 : -1;
 
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-            return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-        }
-        // this.selectedRecords = clonedData.filter(record => selectedIds.includes(record.id));
-        // this.filteredAccounts = clonedData;
-        return direction === 'asc' ? aValue - bValue : bValue - aValue;
-    });
-}
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+            }
+            // this.selectedRecords = clonedData.filter(record => selectedIds.includes(record.id));
+            // this.filteredAccounts = clonedData;
+            return direction === 'asc' ? aValue - bValue : bValue - aValue;
+        });
+    }
 
     //sorting
     getFieldValue(record, fieldName) {
@@ -225,39 +424,6 @@ export default class DataTable extends LightningElement {
 
         const fields = fieldName.split('.');
         return fields.reduce((obj, field) => obj && obj[field.toLowerCase()], record);
-    }
-
-
-    applySearchAndPagination() {
-        let filteredRecords = this.allRecords;
-
-        if (this.searchTerm) {
-            filteredRecords = this.allRecords.filter(record =>
-                record.name.toLowerCase().includes(this.searchTerm.toLowerCase())
-            );
-        }
-        this.totalRecords = filteredRecords.length;
-        this.totalPages = Math.ceil(this.totalRecords / PAGE_SIZE);
-        const start = (this.currentPage - 1) * PAGE_SIZE;
-        const end = this.currentPage * PAGE_SIZE;
-        this.filteredAccounts = filteredRecords.slice(start, end);
-    }
-
-    handleSearch(event) {
-        this.searchTerm = event.target.value;
-        this.currentPage = 1;
-        if (this.hideCheckboxColumn) {
-            this.applySearchAndPagination();
-        } else {
-            this.applySearchAndFilter();
-        }
-    }
-
-    prepareColumnSelectionData() {
-        this.columnSelectionData = this.columns.map(column => ({
-            ...column,
-            selected: this.selectedColumns.includes(column.fieldName)
-        }));
     }
 
     handlePrevious() {
@@ -310,17 +476,8 @@ export default class DataTable extends LightningElement {
     }
 
     applyFilter() {
-        this.applySearchAndFilter();
+        this.applySearchFilterSortAndPagination();
         this.closeFilterModal();
-    }
-
-    setColumnsToDisplay() {
-        this.columnsToDisplay = this.columns.filter(column =>
-            this.selectedColumns.includes(column.fieldName) || column.fieldName === 'nameurl'
-        ).map(column => ({
-            ...column,
-            sortable: true
-        }));
     }
 
     handleColumnFilterClick() {
@@ -333,6 +490,16 @@ export default class DataTable extends LightningElement {
 
     applyColumnFilter() {
         this.handleColumnFilterChange();
+
+        // To send selected columns to parent
+        const selectEvent = new CustomEvent('columnselection', {
+            detail: {
+                name: this.header,
+                selectedColumns: this.selectedColumns
+            }
+        });
+        this.dispatchEvent(selectEvent);
+
         this.closeColumnFilterModal();
     }
 
@@ -346,38 +513,15 @@ export default class DataTable extends LightningElement {
         this.prepareColumnSelectionData();
     }
 
-    handleSelection(event) {
-        const selectedRows = event.detail.selectedRows;
-        
-        // Update allSelectedRecords
-        selectedRows.forEach(row => this.allSelectedRecords.add(row.id));
-        this.filteredAccounts.forEach(account => {
-            if (!selectedRows.some(row => row.id === account.id)) {
-                this.allSelectedRecords.delete(account.id);
-            }
-        });
-    
-        this.selectedRecords = Array.from(this.allSelectedRecords)
-            .map(id => this.allAccounts.find(account => account.id === id))
-            .filter(Boolean);
-    
-        console.log('Selected', this.header, ':', this.selectedRecords);
-    
-        const selectEvent = new CustomEvent('recordselection', {
-            detail: {
-                name: this.header,
-                selectedRecords: this.selectedRecords
-            }
-        });
-        this.dispatchEvent(selectEvent);
-    }
-
+    // to populate columns options in filter modal
     get fieldOptions() {
-        return this.columns.map(column => ({
-            label: column.label,
-            value: column.fieldName,
-            type: column.type
-        }));
+        return this.columns
+            .filter(column => column.type !== 'action' && column.type !== 'button')
+            .map(column => ({
+                label: column.label,
+                value: column.fieldName,
+                type: column.type
+            }));
     }
 
     get maxRowSelection() {
@@ -385,7 +529,7 @@ export default class DataTable extends LightningElement {
     }
 
     get markedRecords() {
-        console.log('in markedRecords', this.selectedRecords);
+        // console.log('in markedRecords', this.selectedRecords);
         if (this.selectedRecords && this.selectedRecords.length > 0) {
             return this.selectedRecords.map(record => record.id);
         }
@@ -413,5 +557,9 @@ export default class DataTable extends LightningElement {
         return Object.entries(firstCriterion)
             .filter(([key, _]) => key !== 'id')
             .every(([_, value]) => value === '');
+    }
+
+    get isMaster() {
+        return this.header === "Master Record" ? true : false;
     }
 }

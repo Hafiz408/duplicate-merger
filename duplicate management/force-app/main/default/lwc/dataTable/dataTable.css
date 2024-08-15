@@ -7,6 +7,8 @@
 
 .search-input-wrapper {
     width: 100%;
+    padding-right: 0px;
+    padding-left: 0px;
 }
 
 .filter-button-wrapper {
@@ -14,11 +16,15 @@
     align-items: flex-end;
     height: 100%;
     margin-left: 5px;
+    padding-left: 0px;
+    padding-right: 0px;
 }
 
 .filter-button-wrapper button {
     height: 32px;
     width: 32px;
+    padding-left: 0px;
+    padding-right: 0px;
 }
 
 .slds-input-has-icon .slds-input__icon {
@@ -37,4 +43,12 @@
 .slds-box {
     border: 1px solid #d8dde6;
     border-radius: 0.25rem;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between; 
+    align-items: center; 
+    width: 100%; 
+    padding: 0 1rem; 
 }

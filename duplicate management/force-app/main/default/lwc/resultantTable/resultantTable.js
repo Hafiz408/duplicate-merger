@@ -21,4 +21,8 @@ export default class ResultantTable extends LightningElement {
             }));
         }
     }
+
+    get mergedRecordsCount() {
+        return this.duplicateRecords ? this.duplicateRecords.length : 0;
+    }
 }

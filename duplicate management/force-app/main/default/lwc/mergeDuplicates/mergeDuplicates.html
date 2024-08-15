@@ -1,3 +1,10 @@
+<!--
+  @description       : 
+  @author            : mohammedhafiz.shahulhameed@cat.com
+  @group             : 
+  @last modified on  : 08-11-2024
+  @last modified by  : mohammedhafiz.shahulhameed@cat.com
+-->
 <template>
     <div class="slds-theme_default">
         <!-- Header -->
@@ -25,7 +32,9 @@
                     <c-data-table 
                         header={masterRecordName}
                         selected-records={masterRecord}
-                        onrecordselection={handleRecordSelection}>
+                        onrecordselection={handleRecordSelection}
+                        selected-columns={masterColumns}
+                        oncolumnselection={handleColumnSelection}>
                     </c-data-table>
                 </div>
         
@@ -34,7 +43,9 @@
                     <c-data-table
                         header={duplicateRecordsName}
                         selected-records={duplicateRecords}
-                        onrecordselection={handleRecordSelection}>
+                        onrecordselection={handleRecordSelection}
+                        selected-columns={duplicateColumns}
+                        oncolumnselection={handleColumnSelection}>
                     </c-data-table>
                 </div>
             </div>
@@ -42,47 +53,65 @@
 
         <!-- Step 2 -->
         <template if:true={isStep2}>
-            <div class="slds-grid slds-gutters">
-                <!-- First Column -->
-                <div class="slds-col slds-size_1-of-2 column-container">
-                    <c-data-table 
-                        header={masterRecordName}
-                        selected-records={masterRecord}
-                        onrecordselection={handleRecordSelection}
-                        hide-checkbox-column={hideChecboxColumn}>
-                    </c-data-table>
-                </div>
-        
-                <!-- Second Column -->
-                <div class="slds-col slds-size_1-of-2 column-container">
-                    <c-data-table
-                        header={duplicateRecordsName}
-                        selected-records={duplicateRecords}
-                        onrecordselection={handleRecordSelection}
-                        hide-checkbox-column={hideChecboxColumn}>
-                    </c-data-table>
-                </div>
-            </div>
+            <c-data-table 
+                header={masterRecordName}
+                selected-records={masterRecord}
+                onrecordselection={handleRecordSelection}
+                selected-columns={masterColumns}
+                oncolumnselection={handleColumnSelection}
+                hide-checkbox-column={hideChecboxColumn}
+                disable-utility="true">
+            </c-data-table>
+            <c-data-table
+                header={duplicateRecordsName}
+                selected-records={duplicateRecords}
+                onrecordselection={handleRecordSelection}
+                selected-columns={duplicateColumns}
+                oncolumnselection={handleColumnSelection}
+                onopencomparemodal={handleOpenCompareModal}
+                onremoverecord={handleRemoveRecordAction}
+                hide-checkbox-column={hideChecboxColumn}>
+            </c-data-table>
+        </template>
+
+        <!-- for dialog box display on clicking Compare Record Row Action -->
+        <template if:true={showCompareModal}>
+            <c-compare-modal
+                master-record={masterRecord}
+                duplicate-record={compareDuplicateRecord}
+                all-fields={allColumns}
+                selected-fields={selectedColumns}
+                onclose={handleCloseModal}
+                onremoverecord={handleRemoveRecord}
+                onshowconfirmation={handleShowConfirmation}>
+            </c-compare-modal>
         </template>
 
         <!-- for dialog box display on clicking Proceed to merge -->
         <template if:true={showConfirmationModal}>
-            <c-confirmation-modal onconfirm={handleConfirmMerge} oncancel={handleCancelMerge}></c-confirmation-modal>
+            <c-confirmation-modal
+                title={confirmationModalTitle}
+                description={confirmationModalDescription}
+                onconfirm={handleConfirm} 
+                oncancel={handleCancel}>
+            </c-confirmation-modal>
         </template>
 
         <!-- Step 3 -->
         <template if:true={isStep3}>
-            <c-resultant-table
-                master-record={masterRecord}
-                duplicate-records={duplicateRecords}>
-            </c-resultant-table>
-        </template>
+            <!-- Loading screen -->
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Processing" size="large"></lightning-spinner>
+            </template>
 
-        <!-- Loading screen -->
-        <template if:true={isLoading}>
-            <lightning-spinner alternative-text="Processing" size="small"></lightning-spinner>
+            <!-- Final resultant table -->
+            <template if:false={isLoading}>
+                <c-resultant-table
+                    master-record={masterRecord}
+                    duplicate-records={duplicateRecords}>
+                </c-resultant-table>
+            </template>
         </template>
-
 
         <!-- Footer -->
         <footer class="slds-modal__footer slds-text-align_center">
