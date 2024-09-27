@@ -1,0 +1,43 @@
+<!--
+  @description       : 
+  @author            : mohammedhafiz.shahulhameed@cat.com
+  @group             : 
+  @last modified on  : 08-18-2024
+  @last modified by  : mohammedhafiz.shahulhameed@cat.com
+-->
+<template>
+    <div class="slds-box slds-theme_default">
+        <!-- Header -->
+        <div class="slds-text-heading_large slds-m-bottom_medium">
+            New Merge Operation
+        </div>
+
+        <!-- Form Fields -->
+        <div class="slds-form slds-form_stacked">
+            <div class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label" for="mergeName">Name
+                    <lightning-helptext content="Enter a unique name for this merge operation"></lightning-helptext>
+                </label>
+                <div class="slds-form-element__control">
+                    <input type="text" id="mergeName" class="slds-input" value={mergeName} onchange={handleNameChange} required />
+                </div>
+            </div>
+            <div class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label" for="mergeDescription">Description
+                    <lightning-helptext content="Provide a brief description of the merge operation (optional)"></lightning-helptext>
+                </label>
+                <div class="slds-form-element__control">
+                    <textarea id="mergeDescription" class="slds-textarea" value={mergeDescription} onchange={handleDescriptionChange}></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Buttons -->
+        <footer class="slds-modal__footer slds-text-align_center">
+            <div class="slds-grid slds-grid_align-center">
+                <button class="slds-button slds-button_neutral slds-m-right_x-small" onclick={handleCancel}>Cancel</button>
+                <button class="slds-button slds-button_brand slds-m-left_x-small" onclick={handleSave}>Proceed to Merge</button>
+            </div>
+        </footer>
+    </div>
+</template>

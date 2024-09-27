@@ -5,7 +5,7 @@
       "default": true
     }
   ],
-  "name": "duplicate management",
+  "name": "Duplicate-Management",
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
   "sourceApiVersion": "61.0"

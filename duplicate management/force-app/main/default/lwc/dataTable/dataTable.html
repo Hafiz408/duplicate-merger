@@ -2,7 +2,7 @@
   @description       : 
   @author            : mohammedhafiz.shahulhameed@cat.com
   @group             : 
-  @last modified on  : 08-12-2024
+  @last modified on  : 08-18-2024
   @last modified by  : mohammedhafiz.shahulhameed@cat.com
 -->
 <template>
@@ -108,7 +108,7 @@
                 <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1">
                     <div class="slds-modal__container">
                         <header class="slds-modal__header">
-                            <h2 id="modal-heading-02" class="slds-text-heading_medium slds-hyphenate">Filter Table Columns</h2>
+                            <h2 id="modal-heading-02" class="slds-text-heading_medium slds-hyphenate">Add Columns</h2>
                         </header>
                         <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-2">
                             <template for:each={columnSelectionData} for:item="column">
@@ -125,7 +125,7 @@
                         </div>
                         <footer class="slds-modal__footer">
                             <button class="slds-button slds-button_neutral" onclick={closeColumnFilterModal}>Cancel</button>
-                            <button class="slds-button slds-button_brand" onclick={applyColumnFilter}>Apply Filter</button>
+                            <button class="slds-button slds-button_brand" onclick={applyColumnFilter}>Add</button>
                         </footer>
                     </div>
                 </section>
@@ -134,21 +134,26 @@
 
             <!-- Result Data Table -->
             <div class="slds-m-top_medium slds-scrollable_y slds-scrollable_x" style="overflow-x: auto;">
-                <lightning-datatable
-                    key-field="id"
-                    data={filteredAccounts}
-                    selected-rows={markedRecords}
-                    columns={columnsToDisplay}
-                    onrowselection={handleSelection}
-                    onrowaction={handleRowAction}
-                    onsort={handleSort}
-                    sorted-by={sortBy}
-                    sorted-direction={sortDirection}
-                    max-row-selection={maxRowSelection}
-                    hide-checkbox-column={hideCheckboxColumn}
-                    column-widths-mode="auto"
-                    min-column-width="150">
-                </lightning-datatable>
+                <template if:false={filteredAccounts.length}>
+                    <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+                </template>
+                <template if:true={filteredAccounts.length}>
+                    <lightning-datatable
+                        key-field="id"
+                        data={filteredAccounts}
+                        selected-rows={markedRecords}
+                        columns={columnsToDisplay}
+                        onrowselection={handleSelection}
+                        onrowaction={handleRowAction}
+                        onsort={handleSort}
+                        sorted-by={sortBy}
+                        sorted-direction={sortDirection}
+                        max-row-selection={maxRowSelection}
+                        hide-checkbox-column={hideCheckboxColumn}
+                        column-widths-mode="auto"
+                        min-column-width="150">
+                    </lightning-datatable>
+                </template>
             </div>
 
             <!-- Pagination  -->
