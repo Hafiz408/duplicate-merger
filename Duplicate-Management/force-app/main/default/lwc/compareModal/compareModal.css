@@ -1,0 +1,13 @@
+.slds-modal__container {
+    width: 95%;
+    max-width: 80rem;
+}
+
+.slds-col {
+    padding: 0.5rem;
+}
+
+.slds-modal__content {
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+}
